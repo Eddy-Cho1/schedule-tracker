@@ -20,7 +20,7 @@ function ProgressRing({ pct, size = 140 }: { pct: number; size?: number }) {
 
   return (
     <div className="ring-wrap" style={{ width: size, height: size }}>
-      <svg width={size} height={size}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={8}/>
         <circle
           cx={size/2} cy={size/2} r={r}

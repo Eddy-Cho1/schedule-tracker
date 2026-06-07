@@ -1037,6 +1037,10 @@ body {
 
   .nav-label { font-size: 10px; }
 
+  .nav-btn.active {
+    background: transparent;
+  }
+
   /* ── Topbar ── */
   .topbar {
     height: calc(48px + env(safe-area-inset-top, 0px));
@@ -1085,6 +1089,11 @@ body {
     width: 76px !important;
     height: 76px !important;
     flex-shrink: 0;
+  }
+
+  .ring-wrap svg {
+    width: 100% !important;
+    height: 100% !important;
   }
 
   .ring-pct  { font-size: 20px !important; }
