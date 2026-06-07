@@ -8,6 +8,7 @@ import Sidebar from './components/Sidebar'
 import TodayView from './components/TodayView'
 import WeeklyView from './components/WeeklyView'
 import MonthlyView from './components/MonthlyView'
+import SharedView from './components/SharedView'
 
 const ChevronLeft = () => (
   <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
@@ -24,6 +25,7 @@ const VIEW_LABELS: Record<View, string> = {
   today:   '오늘',
   weekly:  '주간',
   monthly: '월간',
+  shared:  '공동 일정',
 }
 
 export default function App() {
@@ -64,7 +66,7 @@ export default function App() {
     setMonthDate(new Date())
   }
 
-  const showNav = view !== 'today'
+  const showNav = view !== 'today' && view !== 'shared'
 
   if (loading) return (
     <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', flexDirection: 'column', gap: 12 }}>
@@ -133,6 +135,7 @@ export default function App() {
                 month={monthDate.getMonth()}
               />
             )}
+            {view === 'shared' && <SharedView />}
           </motion.div>
         </AnimatePresence>
       </div>
