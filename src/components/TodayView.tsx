@@ -60,15 +60,15 @@ export default function TodayView() {
   const pendingTasks = tasks.filter(t => !t.completed)
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div className="today-root">
       <div className="today-header">
         <div className="today-weekday">{weekday}요일</div>
         <div className="today-date gradient-text">{dateStr}</div>
       </div>
 
-      <div className="today-grid" style={{ flex: 1, overflow: 'hidden' }}>
+      <div className="today-grid">
         {/* Left: task list */}
-        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className="today-tasks-col">
           <div className="task-section-header">
             <span className="section-title">오늘의 일정</span>
             <button className="add-btn" onClick={() => setModalOpen(true)}>
