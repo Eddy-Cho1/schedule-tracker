@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -6,6 +6,7 @@ import {
   supabase, generateRoomCode,
   getMyMemberId, setMyMemberId,
   getLastRoomCode, setLastRoomCode,
+  getMyNickname, setMyNickname, clearRoomStorage,
   RoomTask, RoomMember, RoomCompletion
 } from '../lib/supabase'
 import { CATEGORY_META, TaskCategory } from '../types'
@@ -13,14 +14,46 @@ import AddTaskModal from './AddTaskModal'
 
 const TODAY = format(new Date(), 'yyyy-MM-dd')
 
+/* ── 토스트 ─────────────────────────────────────────────── */
+function Toast({ msg, type }: { msg: string; type: 'error' | 'success' }) {
+  return (
+    <motion.div
+      className={`room-toast room-toast-${type}`}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 8 }}
+    >
+      {msg}
+    </motion.div>
+  )
+}
+
+function useToast() {
+  const [toast, setToast] = useState<{ msg: string; type: 'error' | 'success' } | null>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function show(msg: string, type: 'error' | 'success' = 'error') {
+    if (timer.current) clearTimeout(timer.current)
+    setToast({ msg, type })
+    timer.current = setTimeout(() => setToast(null), 3000)
+  }
+
+  return { toast, show }
+}
+
 /* ── 진입 화면 ─────────────────────────────────────────── */
-function RoomEntry({ onEnter }: { onEnter: (code: string, nickname: string, isNew: boolean) => void }) {
+function RoomEntry({ savedCode, onEnter }: {
+  savedCode: string | null
+  onEnter: (code: string, nickname: string, isNew: boolean) => void
+}) {
   const [mode, setMode] = useState<'select' | 'create' | 'join'>('select')
   const [nickname, setNickname] = useState('')
   const [roomName, setRoomName] = useState('')
-  const [code, setCode] = useState('')
+  const [code, setCode] = useState(savedCode ?? '')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  const savedNick = savedCode ? getMyNickname(savedCode) : ''
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -58,9 +91,24 @@ function RoomEntry({ onEnter }: { onEnter: (code: string, nickname: string, isNe
             </div>
             <h2 className="room-entry-title">공동 일정</h2>
             <p className="room-entry-desc">룸코드로 친구와 일정을 공유하고<br/>서로의 달성률을 비교해보세요</p>
-            <div className="room-entry-btns">
+
+            {/* 저장된 방이 있으면 빠른 재참가 버튼 */}
+            {savedCode && savedNick && (
+              <button className="room-rejoin-btn" onClick={() => onEnter(savedCode, savedNick, false)}>
+                <span className="rejoin-code">{savedCode}</span>
+                <span className="rejoin-nick">{savedNick}으로 바로 입장</span>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="4 4 10 7 4 10"/>
+                </svg>
+              </button>
+            )}
+
+            <div className="room-entry-btns" style={{ marginTop: (savedCode && savedNick) ? 12 : 0 }}>
               <button className="btn-primary" style={{ width: '100%' }} onClick={() => setMode('create')}>새 방 만들기</button>
-              <button className="btn-cancel" style={{ width: '100%', marginTop: 10 }} onClick={() => setMode('join')}>코드로 참가</button>
+              <button className="btn-cancel" style={{ width: '100%', marginTop: 10 }}
+                onClick={() => { setMode('join'); setCode(savedCode ?? '') }}>
+                코드로 참가
+              </button>
             </div>
           </motion.div>
         )}
@@ -69,20 +117,25 @@ function RoomEntry({ onEnter }: { onEnter: (code: string, nickname: string, isNe
           <motion.div key="create" className="room-entry-form"
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
             <button className="room-back-btn" onClick={() => { setMode('select'); setError('') }}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="10 4 6 8 10 12"/></svg>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="10 4 6 8 10 12"/>
+              </svg>
             </button>
             <h2 className="room-entry-title" style={{ marginBottom: 24 }}>새 방 만들기</h2>
-            <form onSubmit={handleCreate}>
+            <form onSubmit={handleCreate} style={{ width: '100%' }}>
               <div className="form-group">
                 <label className="form-label">내 닉네임</label>
-                <input className="form-input" placeholder="예: Eddy" value={nickname} onChange={e => setNickname(e.target.value)} autoFocus/>
+                <input className="form-input" placeholder="예: Eddy" value={nickname}
+                  onChange={e => setNickname(e.target.value)} autoFocus/>
               </div>
               <div className="form-group">
                 <label className="form-label">방 이름</label>
-                <input className="form-input" placeholder="예: Eddy & 지수" value={roomName} onChange={e => setRoomName(e.target.value)}/>
+                <input className="form-input" placeholder="예: Eddy & 지수" value={roomName}
+                  onChange={e => setRoomName(e.target.value)}/>
               </div>
               {error && <div className="room-error">{error}</div>}
-              <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: 8 }} disabled={loading || !nickname.trim() || !roomName.trim()}>
+              <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: 8 }}
+                disabled={loading || !nickname.trim() || !roomName.trim()}>
                 {loading ? '생성 중...' : '방 만들기'}
               </button>
             </form>
@@ -93,21 +146,26 @@ function RoomEntry({ onEnter }: { onEnter: (code: string, nickname: string, isNe
           <motion.div key="join" className="room-entry-form"
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
             <button className="room-back-btn" onClick={() => { setMode('select'); setError('') }}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="10 4 6 8 10 12"/></svg>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="10 4 6 8 10 12"/>
+              </svg>
             </button>
             <h2 className="room-entry-title" style={{ marginBottom: 24 }}>코드로 참가</h2>
-            <form onSubmit={handleJoin}>
+            <form onSubmit={handleJoin} style={{ width: '100%' }}>
               <div className="form-group">
                 <label className="form-label">내 닉네임</label>
-                <input className="form-input" placeholder="예: 지수" value={nickname} onChange={e => setNickname(e.target.value)} autoFocus/>
+                <input className="form-input" placeholder="예: 지수" value={nickname}
+                  onChange={e => setNickname(e.target.value)} autoFocus/>
               </div>
               <div className="form-group">
                 <label className="form-label">룸코드</label>
-                <input className="form-input room-code-input" placeholder="XXXXXX" value={code}
-                  onChange={e => setCode(e.target.value.toUpperCase())} maxLength={6} style={{ letterSpacing: '0.2em', textTransform: 'uppercase' }}/>
+                <input className="form-input" placeholder="XXXXXX" value={code}
+                  onChange={e => setCode(e.target.value.toUpperCase())} maxLength={6}
+                  style={{ letterSpacing: '0.2em', fontFamily: 'monospace' }}/>
               </div>
               {error && <div className="room-error">{error}</div>}
-              <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: 8 }} disabled={loading || !nickname.trim() || code.trim().length !== 6}>
+              <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: 8 }}
+                disabled={loading || !nickname.trim() || code.trim().length !== 6}>
                 {loading ? '참가 중...' : '참가하기'}
               </button>
             </form>
@@ -119,45 +177,59 @@ function RoomEntry({ onEnter }: { onEnter: (code: string, nickname: string, isNe
 }
 
 /* ── 공동 일정 방 ────────────────────────────────────────── */
-function RoomView({ roomCode, nickname, isNew, onLeave }: {
-  roomCode: string; nickname: string; isNew: boolean; onLeave: () => void
+function RoomView({ roomCode, nickname, onLeave }: {
+  roomCode: string; nickname: string; onLeave: () => void
 }) {
-  const [myMemberId, setMyMemberIdState] = useState<string | null>(null)
+  const { toast, show: showToast } = useToast()
+  const [myMemberId, setMyMemberIdState] = useState<string | null>(() => getMyMemberId(roomCode))
   const [members, setMembers] = useState<RoomMember[]>([])
   const [tasks, setTasks] = useState<RoomTask[]>([])
   const [completions, setCompletions] = useState<RoomCompletion[]>([])
   const [roomName, setRoomName] = useState('')
   const [addOpen, setAddOpen] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [date, setDate] = useState(TODAY)
+  const [loading, setLoading] = useState(true)
+  const date = TODAY
 
-  // 초기 데이터 로드
   useEffect(() => {
     let memberId = getMyMemberId(roomCode)
+
     async function init() {
-      // 방 정보
-      const { data: room } = await supabase.from('rooms').select('name').eq('code', roomCode).single()
-      if (room) setRoomName(room.name)
+      setLoading(true)
+      try {
+        const { data: room } = await supabase.from('rooms').select('name').eq('code', roomCode).single()
+        if (room) setRoomName(room.name)
 
-      // 멤버 등록 또는 기존 멤버 확인
-      if (!memberId) {
-        const { data: m } = await supabase.from('room_members').insert({ room_code: roomCode, nickname }).select().single()
-        if (m) { memberId = m.id; setMyMemberId(roomCode, m.id) }
+        if (!memberId) {
+          const { data: m, error: me } = await supabase
+            .from('room_members').insert({ room_code: roomCode, nickname }).select().single()
+          if (me) showToast('멤버 등록 실패: ' + me.message)
+          else if (m) { memberId = m.id; setMyMemberId(roomCode, m.id) }
+        }
+        setMyMemberIdState(memberId)
+
+        const { data: mList, error: mErr } = await supabase
+          .from('room_members').select('*').eq('room_code', roomCode)
+        if (mErr) showToast('멤버 로드 실패')
+        else setMembers(mList ?? [])
+
+        const { data: tList, error: tErr } = await supabase
+          .from('room_tasks').select('*').eq('room_code', roomCode).order('order_idx')
+        if (tErr) showToast('태스크 로드 실패')
+        else setTasks(tList ?? [])
+
+        const { data: cList, error: cErr } = await supabase
+          .from('room_completions').select('*').eq('room_code', roomCode).eq('date', date)
+        if (cErr) showToast('완료 기록 로드 실패')
+        else setCompletions(cList ?? [])
+
+      } catch {
+        showToast('데이터 로드 중 오류가 발생했습니다')
+      } finally {
+        setLoading(false)
       }
-      setMyMemberIdState(memberId)
-
-      // 전체 멤버 목록
-      const { data: mList } = await supabase.from('room_members').select('*').eq('room_code', roomCode)
-      setMembers(mList ?? [])
-
-      // 태스크 목록
-      const { data: tList } = await supabase.from('room_tasks').select('*').eq('room_code', roomCode).order('order_idx')
-      setTasks(tList ?? [])
-
-      // 오늘 완료 기록
-      const { data: cList } = await supabase.from('room_completions').select('*').eq('room_code', roomCode).eq('date', date)
-      setCompletions(cList ?? [])
     }
+
     init()
   }, [roomCode])
 
@@ -166,46 +238,100 @@ function RoomView({ roomCode, nickname, isNew, onLeave }: {
     const taskSub = supabase.channel(`tasks:${roomCode}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'room_tasks', filter: `room_code=eq.${roomCode}` },
         () => supabase.from('room_tasks').select('*').eq('room_code', roomCode).order('order_idx')
-          .then(({ data }) => setTasks(data ?? [])))
+          .then(({ data }) => { if (data) setTasks(data) }))
       .subscribe()
 
     const compSub = supabase.channel(`completions:${roomCode}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'room_completions', filter: `room_code=eq.${roomCode}` },
         () => supabase.from('room_completions').select('*').eq('room_code', roomCode).eq('date', date)
-          .then(({ data }) => setCompletions(data ?? [])))
+          .then(({ data }) => { if (data) setCompletions(data) }))
       .subscribe()
 
     const memberSub = supabase.channel(`members:${roomCode}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'room_members', filter: `room_code=eq.${roomCode}` },
         () => supabase.from('room_members').select('*').eq('room_code', roomCode)
-          .then(({ data }) => setMembers(data ?? [])))
+          .then(({ data }) => { if (data) setMembers(data) }))
       .subscribe()
 
-    return () => { supabase.removeChannel(taskSub); supabase.removeChannel(compSub); supabase.removeChannel(memberSub) }
+    return () => {
+      supabase.removeChannel(taskSub)
+      supabase.removeChannel(compSub)
+      supabase.removeChannel(memberSub)
+    }
   }, [roomCode, date])
 
   async function handleAddTask(task: { title: string; time?: string; category: TaskCategory }) {
-    await supabase.from('room_tasks').insert({
+    // 낙관적 업데이트
+    const tempId = `temp_${Date.now()}`
+    const optimistic: RoomTask = {
+      id: tempId, room_code: roomCode,
+      title: task.title, time: task.time,
+      category: task.category, order_idx: tasks.length,
+    }
+    setTasks(prev => [...prev, optimistic])
+
+    const { data, error } = await supabase.from('room_tasks').insert({
       room_code: roomCode,
       title: task.title,
       time: task.time ?? null,
       category: task.category,
       order_idx: tasks.length,
-    })
+    }).select().single()
+
+    if (error) {
+      setTasks(prev => prev.filter(t => t.id !== tempId))
+      showToast('태스크 저장 실패: ' + error.message)
+    } else if (data) {
+      setTasks(prev => prev.map(t => t.id === tempId ? data : t))
+    }
   }
 
   async function handleToggle(taskId: string, memberId: string) {
-    if (memberId !== myMemberId) return // 본인만 수정 가능
-    const existing = completions.find(c => c.task_id === taskId && c.member_id === memberId && c.date === date)
+    if (memberId !== myMemberId) return
+
+    const existing = completions.find(
+      c => c.task_id === taskId && c.member_id === memberId && c.date === date
+    )
+    const newCompleted = existing ? !existing.completed : true
+
+    // 낙관적 업데이트
     if (existing) {
-      await supabase.from('room_completions').update({ completed: !existing.completed, updated_at: new Date().toISOString() }).eq('id', existing.id)
+      setCompletions(prev => prev.map(c =>
+        c.id === existing.id ? { ...c, completed: newCompleted } : c
+      ))
     } else {
-      await supabase.from('room_completions').insert({ room_code: roomCode, member_id: memberId, task_id: taskId, date, completed: true })
+      setCompletions(prev => [...prev, {
+        id: `temp_${Date.now()}`, room_code: roomCode,
+        member_id: memberId, task_id: taskId, date, completed: true
+      }])
+    }
+
+    const { error } = await supabase.from('room_completions').upsert({
+      room_code: roomCode,
+      member_id: memberId,
+      task_id: taskId,
+      date,
+      completed: newCompleted,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'member_id,task_id,date' })
+
+    if (error) {
+      const { data: fresh } = await supabase
+        .from('room_completions').select('*').eq('room_code', roomCode).eq('date', date)
+      if (fresh) setCompletions(fresh)
+      showToast('저장 실패: ' + error.message)
     }
   }
 
   async function handleDeleteTask(taskId: string) {
-    await supabase.from('room_tasks').delete().eq('id', taskId)
+    setTasks(prev => prev.filter(t => t.id !== taskId))
+    const { error } = await supabase.from('room_tasks').delete().eq('id', taskId)
+    if (error) {
+      const { data } = await supabase
+        .from('room_tasks').select('*').eq('room_code', roomCode).order('order_idx')
+      if (data) setTasks(data)
+      showToast('삭제 실패: ' + error.message)
+    }
   }
 
   function copyCode() {
@@ -224,8 +350,24 @@ function RoomView({ roomCode, nickname, isNew, onLeave }: {
     return Math.round((done / tasks.length) * 100)
   }
 
+  if (loading) {
+    return (
+      <div className="room-loading">
+        <div className="room-loading-spinner"/>
+        <span>불러오는 중...</span>
+      </div>
+    )
+  }
+
   return (
     <div className="room-view">
+      {/* 토스트 */}
+      <div className="room-toast-wrap">
+        <AnimatePresence>
+          {toast && <Toast key="toast" msg={toast.msg} type={toast.type}/>}
+        </AnimatePresence>
+      </div>
+
       {/* 방 헤더 */}
       <div className="room-header">
         <div>
@@ -237,19 +379,22 @@ function RoomView({ roomCode, nickname, isNew, onLeave }: {
             <span>{copied ? '복사됨' : roomCode}</span>
             {!copied && (
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="5" y="5" width="9" height="9" rx="1"/><path d="M3 11H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v1"/>
+                <rect x="5" y="5" width="9" height="9" rx="1"/>
+                <path d="M3 11H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v1"/>
               </svg>
             )}
           </button>
-          <button className="icon-btn" onClick={onLeave} title="나가기">
+          <button className="icon-btn" onClick={onLeave} title="방 나가기">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10 2h4v12h-4"/><polyline points="7 11 10 8 7 5"/><line x1="1" y1="8" x2="10" y2="8"/>
+              <path d="M10 2h4v12h-4"/>
+              <polyline points="7 11 10 8 7 5"/>
+              <line x1="1" y1="8" x2="10" y2="8"/>
             </svg>
           </button>
         </div>
       </div>
 
-      {/* 멤버 달성률 요약 */}
+      {/* 멤버 달성률 */}
       <div className="room-members-row">
         {members.map(m => {
           const rate = getMemberRate(m.id)
@@ -258,7 +403,10 @@ function RoomView({ roomCode, nickname, isNew, onLeave }: {
             <div key={m.id} className={`room-member-chip ${isMe ? 'me' : ''}`}>
               <span className="member-name">{m.nickname}{isMe ? ' (나)' : ''}</span>
               <span className="member-rate" style={{
-                color: rate === null ? 'var(--text-3)' : rate >= 80 ? 'var(--success)' : rate >= 50 ? 'var(--accent-light)' : 'var(--danger)'
+                color: rate === null ? 'var(--text-3)'
+                  : rate >= 80 ? 'var(--success)'
+                  : rate >= 50 ? 'var(--accent-light)'
+                  : 'var(--danger)'
               }}>
                 {rate !== null ? `${rate}%` : '--'}
               </span>
@@ -272,7 +420,8 @@ function RoomView({ roomCode, nickname, isNew, onLeave }: {
         <span className="section-title">공유 태스크</span>
         <button className="add-btn" onClick={() => setAddOpen(true)}>
           <svg width={12} height={12} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
-            <line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/>
+            <line x1="6" y1="1" x2="6" y2="11"/>
+            <line x1="1" y1="6" x2="11" y2="6"/>
           </svg>
           추가
         </button>
@@ -291,7 +440,6 @@ function RoomView({ roomCode, nickname, isNew, onLeave }: {
         </div>
       ) : (
         <div className="comparison-table">
-          {/* 헤더 */}
           <div className="comp-row comp-header">
             <div className="comp-task-col">태스크</div>
             {members.map(m => (
@@ -301,7 +449,6 @@ function RoomView({ roomCode, nickname, isNew, onLeave }: {
             ))}
             <div className="comp-del-col"/>
           </div>
-          {/* 행 */}
           {tasks.map(task => {
             const meta = CATEGORY_META[task.category as TaskCategory] ?? CATEGORY_META.other
             return (
@@ -321,18 +468,22 @@ function RoomView({ roomCode, nickname, isNew, onLeave }: {
                         onClick={() => handleToggle(task.id, m.id)}
                         disabled={!isMe}
                       >
-                        {done
-                          ? <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><polyline points="2 7 5.5 10.5 12 3.5"/></svg>
-                          : null
-                        }
+                        {done && (
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor"
+                            strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="2 7 5.5 10.5 12 3.5"/>
+                          </svg>
+                        )}
                       </button>
                     </div>
                   )
                 })}
                 <div className="comp-del-col">
-                  <button className="task-del" style={{ opacity: 0.4 }} onClick={() => handleDeleteTask(task.id)}>
-                    <svg viewBox="0 0 16 16" width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-                      <line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/>
+                  <button className="task-del" onClick={() => handleDeleteTask(task.id)}>
+                    <svg viewBox="0 0 16 16" width={12} height={12} fill="none" stroke="currentColor"
+                      strokeWidth={2} strokeLinecap="round">
+                      <line x1="4" y1="4" x2="12" y2="12"/>
+                      <line x1="12" y1="4" x2="4" y2="12"/>
                     </svg>
                   </button>
                 </div>
@@ -349,25 +500,35 @@ function RoomView({ roomCode, nickname, isNew, onLeave }: {
 
 /* ── 메인 SharedView ─────────────────────────────────────── */
 export default function SharedView() {
-  const [roomCode, setRoomCode] = useState<string | null>(() => getLastRoomCode())
-  const [nickname, setNickname] = useState('')
-  const [isNew, setIsNew] = useState(false)
+  const savedCode = getLastRoomCode()
+  const savedNick = savedCode ? getMyNickname(savedCode) : ''
 
-  function handleEnter(code: string, nick: string, newRoom: boolean) {
+  const [roomCode, setRoomCode] = useState<string | null>(savedCode)
+  const [nickname, setNickname] = useState<string>(savedNick)
+
+  function handleEnter(code: string, nick: string, _isNew: boolean) {
     setLastRoomCode(code)
+    setMyNickname(code, nick)
     setRoomCode(code)
     setNickname(nick)
-    setIsNew(newRoom)
   }
 
   function handleLeave() {
+    if (roomCode) clearRoomStorage(roomCode)
     setRoomCode(null)
     setNickname('')
   }
 
   if (!roomCode || !nickname) {
-    return <RoomEntry onEnter={handleEnter}/>
+    return <RoomEntry savedCode={savedCode} onEnter={handleEnter}/>
   }
 
-  return <RoomView roomCode={roomCode} nickname={nickname} isNew={isNew} onLeave={handleLeave}/>
+  return (
+    <RoomView
+      key={roomCode}
+      roomCode={roomCode}
+      nickname={nickname}
+      onLeave={handleLeave}
+    />
+  )
 }

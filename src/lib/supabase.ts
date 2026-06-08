@@ -47,6 +47,22 @@ export function setLastRoomCode(code: string) {
   localStorage.setItem('last_room_code', code)
 }
 
+// 닉네임 저장 (룸별)
+export function getMyNickname(roomCode: string): string {
+  return localStorage.getItem(`room_nick_${roomCode}`) ?? ''
+}
+
+export function setMyNickname(roomCode: string, nickname: string) {
+  localStorage.setItem(`room_nick_${roomCode}`, nickname)
+}
+
+// 방 나갈 때 로컬 데이터 삭제
+export function clearRoomStorage(roomCode: string) {
+  localStorage.removeItem(`room_nick_${roomCode}`)
+  localStorage.removeItem(`room_member_${roomCode}`)
+  localStorage.removeItem('last_room_code')
+}
+
 // 6자리 룸코드 생성
 export function generateRoomCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
