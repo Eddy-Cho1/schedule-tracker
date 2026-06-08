@@ -6,7 +6,7 @@ import {
   supabase, generateRoomCode,
   getMyMemberId, setMyMemberId,
   getLastRoomCode, setLastRoomCode,
-  getMyNickname, setMyNickname, clearRoomStorage,
+  getMyNickname, setMyNickname,
   RoomTask, RoomMember, RoomCompletion
 } from '../lib/supabase'
 import { CATEGORY_META, TaskCategory } from '../types'
@@ -514,7 +514,7 @@ export default function SharedView() {
   }
 
   function handleLeave() {
-    if (roomCode) clearRoomStorage(roomCode)
+    // localStorage는 유지 — 진입 화면에서 "바로 입장" 버튼으로 언제든 재참가 가능
     setRoomCode(null)
     setNickname('')
   }
