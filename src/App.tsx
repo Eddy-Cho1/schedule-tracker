@@ -9,6 +9,10 @@ import TodayView from './components/TodayView'
 import WeeklyView from './components/WeeklyView'
 import MonthlyView from './components/MonthlyView'
 import SharedView from './components/SharedView'
+import NotificationBell from './components/NotificationBell'
+import { syncSchedule, isPushEnabled } from './lib/push'
+
+const TODAY_KEY = format(new Date(), 'yyyy-MM-dd')
 
 const ChevronLeft = () => (
   <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
@@ -35,6 +39,13 @@ export default function App() {
   const [monthDate, setMonthDate] = useState(new Date())
 
   useEffect(() => { load() }, [])
+
+  // 오늘 일정 변경 시 서버에 sync (푸시 알림용)
+  useEffect(() => {
+    if (!isPushEnabled()) return
+    const tasks = data.entries[TODAY_KEY]?.tasks ?? []
+    syncSchedule(tasks)
+  }, [data.entries[TODAY_KEY]?.tasks?.length])
 
   const now = new Date()
   const todayLabel = format(now, 'yyyy년 M월 d일 (E)', { locale: ko })
@@ -91,6 +102,7 @@ export default function App() {
         <div className="topbar">
           <span className="topbar-title">{VIEW_LABELS[view]}</span>
           <div className="topbar-spacer"/>
+          <NotificationBell />
           {showNav && (
             <div className="topbar-nav">
               <button className="icon-btn" onClick={handlePrev}><ChevronLeft /></button>
