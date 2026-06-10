@@ -33,19 +33,28 @@ const VIEW_LABELS: Record<View, string> = {
 }
 
 export default function App() {
-  const { load, loading } = useStore()
+  const { load, loading, data: storeData } = useStore()
   const [view, setView] = useState<View>('today')
   const [weekOffset, setWeekOffset] = useState(0)
   const [monthDate, setMonthDate] = useState(new Date())
 
+  // 초대 링크 (?join=ROOMCODE) 처리 — 마운트 시 1회만 읽고 URL 정리
+  const [inviteCode] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get('join')?.toUpperCase() ?? null
+    if (code) window.history.replaceState({}, '', '/')
+    return code
+  })
+
   useEffect(() => { load() }, [])
+  useEffect(() => { if (inviteCode) setView('shared') }, [inviteCode])
 
   // 오늘 일정 변경 시 서버에 sync (푸시 알림용)
   useEffect(() => {
     if (!isPushEnabled()) return
-    const tasks = data.entries[TODAY_KEY]?.tasks ?? []
+    const tasks = storeData.entries[TODAY_KEY]?.tasks ?? []
     syncSchedule(tasks)
-  }, [data.entries[TODAY_KEY]?.tasks?.length])
+  }, [storeData.entries[TODAY_KEY]?.tasks?.length])
 
   const now = new Date()
   const todayLabel = format(now, 'yyyy년 M월 d일 (E)', { locale: ko })
@@ -147,7 +156,7 @@ export default function App() {
                 month={monthDate.getMonth()}
               />
             )}
-            {view === 'shared' && <SharedView />}
+            {view === 'shared' && <SharedView initialCode={inviteCode} />}
           </motion.div>
         </AnimatePresence>
       </div>
