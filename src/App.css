@@ -1322,6 +1322,30 @@ body {
   background: rgba(124,111,247,0.25);
 }
 
+.google-login-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  background: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  color: #3c4043;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, opacity 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  margin-top: 8px;
+}
+.google-login-btn:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+.google-login-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .room-invite-btn {
   display: flex;
   align-items: center;

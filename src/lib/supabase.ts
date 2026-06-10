@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, User } from '@supabase/supabase-js'
 
 const SUPABASE_URL = 'https://qwyvqnrklasaiirkhhjz.supabase.co'
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3eXZxbnJrbGFzYWlpcmtoaGp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MDU2MTYsImV4cCI6MjA5NjM4MTYxNn0.YJG5U5QciOakiYTHuLP3iocHQxHb9YDOI6gjB8MRaZ8'
@@ -67,4 +67,23 @@ export function clearRoomStorage(roomCode: string) {
 export function generateRoomCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+}
+
+// ── Auth ────────────────────────────────────────────────────
+export type { User }
+
+export async function getAuthUser(): Promise<User | null> {
+  const { data } = await supabase.auth.getUser()
+  return data.user
+}
+
+export async function signInWithGoogle() {
+  return supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin },
+  })
+}
+
+export async function signOut() {
+  return supabase.auth.signOut()
 }

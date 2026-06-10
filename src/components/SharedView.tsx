@@ -4,9 +4,9 @@ import { ko } from 'date-fns/locale'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   supabase, generateRoomCode,
-  getMyMemberId, setMyMemberId,
   getLastRoomCode, setLastRoomCode,
   getMyNickname, setMyNickname,
+  signInWithGoogle, signOut, User,
   RoomTask, RoomMember, RoomCompletion
 } from '../lib/supabase'
 import { CATEGORY_META, TaskCategory } from '../types'
@@ -41,15 +41,58 @@ function useToast() {
   return { toast, show }
 }
 
+/* ── 구글 로그인 화면 ───────────────────────────────────── */
+function GoogleLoginPrompt() {
+  const [loading, setLoading] = useState(false)
+
+  async function handleLogin() {
+    setLoading(true)
+    await signInWithGoogle()
+  }
+
+  return (
+    <div className="room-entry">
+      <motion.div className="room-entry-select"
+        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="room-entry-icon">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <rect x="2" y="2" width="12" height="12" rx="3" fill="var(--accent)" opacity="0.9"/>
+            <rect x="18" y="2" width="12" height="12" rx="3" fill="var(--accent)" opacity="0.9"/>
+            <rect x="2" y="18" width="12" height="12" rx="3" fill="var(--accent)" opacity="0.5"/>
+            <rect x="18" y="18" width="12" height="12" rx="3" fill="var(--accent)" opacity="0.5"/>
+          </svg>
+        </div>
+        <h2 className="room-entry-title">공동 일정</h2>
+        <p className="room-entry-desc">친구와 일정을 공유하려면<br/>구글 계정으로 로그인해주세요</p>
+        <button className="google-login-btn" onClick={handleLogin} disabled={loading}>
+          {loading ? (
+            <div className="bell-spinner" style={{ width: 18, height: 18 }}/>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 48 48">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+          )}
+          {!loading && <span>Google로 로그인</span>}
+        </button>
+      </motion.div>
+    </div>
+  )
+}
+
 /* ── 진입 화면 ─────────────────────────────────────────── */
-function RoomEntry({ savedCode, initialCode, onEnter }: {
+function RoomEntry({ savedCode, initialCode, defaultNickname, onEnter, onLogout }: {
   savedCode: string | null
   initialCode: string | null
+  defaultNickname: string
   onEnter: (code: string, nickname: string, isNew: boolean) => void
+  onLogout: () => void
 }) {
   // 초대 링크로 왔으면 바로 join 모드
   const [mode, setMode] = useState<'select' | 'create' | 'join'>(initialCode ? 'join' : 'select')
-  const [nickname, setNickname] = useState('')
+  const [nickname, setNickname] = useState(defaultNickname)
   const [roomName, setRoomName] = useState('')
   const [code, setCode] = useState(initialCode ?? savedCode ?? '')
   const [error, setError] = useState('')
@@ -110,6 +153,10 @@ function RoomEntry({ savedCode, initialCode, onEnter }: {
               <button className="btn-cancel" style={{ width: '100%', marginTop: 10 }}
                 onClick={() => { setMode('join'); setCode(savedCode ?? '') }}>
                 코드로 참가
+              </button>
+              <button className="btn-cancel" style={{ width: '100%', marginTop: 10, opacity: 0.5, fontSize: 12 }}
+                onClick={onLogout}>
+                로그아웃
               </button>
             </div>
           </motion.div>
@@ -179,11 +226,11 @@ function RoomEntry({ savedCode, initialCode, onEnter }: {
 }
 
 /* ── 공동 일정 방 ────────────────────────────────────────── */
-function RoomView({ roomCode, nickname, onLeave }: {
-  roomCode: string; nickname: string; onLeave: () => void
+function RoomView({ roomCode, nickname, user, onLeave }: {
+  roomCode: string; nickname: string; user: User; onLeave: () => void
 }) {
   const { toast, show: showToast } = useToast()
-  const [myMemberId, setMyMemberIdState] = useState<string | null>(() => getMyMemberId(roomCode))
+  const [myMemberId, setMyMemberIdState] = useState<string | null>(null)
   const [members, setMembers] = useState<RoomMember[]>([])
   const [tasks, setTasks] = useState<RoomTask[]>([])
   const [completions, setCompletions] = useState<RoomCompletion[]>([])
@@ -195,19 +242,24 @@ function RoomView({ roomCode, nickname, onLeave }: {
   const date = TODAY
 
   useEffect(() => {
-    let memberId = getMyMemberId(roomCode)
-
     async function init() {
       setLoading(true)
       try {
         const { data: room } = await supabase.from('rooms').select('name').eq('code', roomCode).single()
         if (room) setRoomName(room.name)
 
-        if (!memberId) {
+        // 기존 멤버 조회 (같은 user_id + room_code)
+        let memberId: string | null = null
+        const { data: existing } = await supabase
+          .from('room_members').select('id').eq('room_code', roomCode).eq('user_id', user.id).maybeSingle()
+
+        if (existing) {
+          memberId = existing.id
+        } else {
           const { data: m, error: me } = await supabase
-            .from('room_members').insert({ room_code: roomCode, nickname }).select().single()
+            .from('room_members').insert({ room_code: roomCode, nickname, user_id: user.id }).select().single()
           if (me) showToast('멤버 등록 실패: ' + me.message)
-          else if (m) { memberId = m.id; setMyMemberId(roomCode, m.id) }
+          else if (m) memberId = m.id
         }
         setMyMemberIdState(memberId)
 
@@ -522,11 +574,35 @@ function RoomView({ roomCode, nickname, onLeave }: {
 
 /* ── 메인 SharedView ─────────────────────────────────────── */
 export default function SharedView({ initialCode }: { initialCode?: string | null }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
+
   const savedCode = getLastRoomCode()
-  const savedNick = savedCode ? getMyNickname(savedCode) : ''
+  const savedNick = user && savedCode ? getMyNickname(savedCode) : ''
 
   const [roomCode, setRoomCode] = useState<string | null>(savedCode)
   const [nickname, setNickname] = useState<string>(savedNick)
+
+  // auth 상태 구독
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null)
+      setAuthLoading(false)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+      setAuthLoading(false)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  // 로그인 후 savedCode 있으면 자동 복원
+  useEffect(() => {
+    if (!user) return
+    const code = getLastRoomCode()
+    const nick = code ? getMyNickname(code) : ''
+    if (code && nick) { setRoomCode(code); setNickname(nick) }
+  }, [user])
 
   function handleEnter(code: string, nick: string, _isNew: boolean) {
     setLastRoomCode(code)
@@ -536,13 +612,33 @@ export default function SharedView({ initialCode }: { initialCode?: string | nul
   }
 
   function handleLeave() {
-    // localStorage는 유지 — 진입 화면에서 "바로 입장" 버튼으로 언제든 재참가 가능
     setRoomCode(null)
     setNickname('')
   }
 
+  if (authLoading) {
+    return (
+      <div className="room-loading">
+        <div className="room-loading-spinner"/>
+        <span>확인 중...</span>
+      </div>
+    )
+  }
+
+  if (!user) return <GoogleLoginPrompt />
+
+  const googleName = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? ''
+
   if (!roomCode || !nickname) {
-    return <RoomEntry savedCode={savedCode} initialCode={initialCode ?? null} onEnter={handleEnter}/>
+    return (
+      <RoomEntry
+        savedCode={savedCode}
+        initialCode={initialCode ?? null}
+        defaultNickname={googleName}
+        onEnter={handleEnter}
+        onLogout={async () => { await signOut(); setUser(null) }}
+      />
+    )
   }
 
   return (
@@ -550,6 +646,7 @@ export default function SharedView({ initialCode }: { initialCode?: string | nul
       key={roomCode}
       roomCode={roomCode}
       nickname={nickname}
+      user={user}
       onLeave={handleLeave}
     />
   )
