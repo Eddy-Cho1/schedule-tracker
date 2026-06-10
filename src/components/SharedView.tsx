@@ -42,14 +42,16 @@ function useToast() {
 }
 
 /* ── 진입 화면 ─────────────────────────────────────────── */
-function RoomEntry({ savedCode, onEnter }: {
+function RoomEntry({ savedCode, initialCode, onEnter }: {
   savedCode: string | null
+  initialCode: string | null
   onEnter: (code: string, nickname: string, isNew: boolean) => void
 }) {
-  const [mode, setMode] = useState<'select' | 'create' | 'join'>('select')
+  // 초대 링크로 왔으면 바로 join 모드
+  const [mode, setMode] = useState<'select' | 'create' | 'join'>(initialCode ? 'join' : 'select')
   const [nickname, setNickname] = useState('')
   const [roomName, setRoomName] = useState('')
-  const [code, setCode] = useState(savedCode ?? '')
+  const [code, setCode] = useState(initialCode ?? savedCode ?? '')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -188,6 +190,7 @@ function RoomView({ roomCode, nickname, onLeave }: {
   const [roomName, setRoomName] = useState('')
   const [addOpen, setAddOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [inviteCopied, setInviteCopied] = useState(false)
   const [loading, setLoading] = useState(true)
   const date = TODAY
 
@@ -340,6 +343,12 @@ function RoomView({ roomCode, nickname, onLeave }: {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  function copyInviteLink() {
+    navigator.clipboard.writeText(`${window.location.origin}/?join=${roomCode}`)
+    setInviteCopied(true)
+    setTimeout(() => setInviteCopied(false), 2000)
+  }
+
   function isCompleted(taskId: string, memberId: string) {
     return completions.some(c => c.task_id === taskId && c.member_id === memberId && c.completed)
   }
@@ -383,6 +392,19 @@ function RoomView({ roomCode, nickname, onLeave }: {
                 <path d="M3 11H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v1"/>
               </svg>
             )}
+          </button>
+          <button className="room-invite-btn" onClick={copyInviteLink} title="초대 링크 복사">
+            {inviteCopied ? (
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="2 7 5.5 10.5 12 3.5"/>
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+              </svg>
+            )}
+            <span style={{ fontSize: 11 }}>{inviteCopied ? '복사됨' : '초대'}</span>
           </button>
           <button className="icon-btn" onClick={onLeave} title="방 나가기">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -499,7 +521,7 @@ function RoomView({ roomCode, nickname, onLeave }: {
 }
 
 /* ── 메인 SharedView ─────────────────────────────────────── */
-export default function SharedView() {
+export default function SharedView({ initialCode }: { initialCode?: string | null }) {
   const savedCode = getLastRoomCode()
   const savedNick = savedCode ? getMyNickname(savedCode) : ''
 
@@ -520,7 +542,7 @@ export default function SharedView() {
   }
 
   if (!roomCode || !nickname) {
-    return <RoomEntry savedCode={savedCode} onEnter={handleEnter}/>
+    return <RoomEntry savedCode={savedCode} initialCode={initialCode ?? null} onEnter={handleEnter}/>
   }
 
   return (

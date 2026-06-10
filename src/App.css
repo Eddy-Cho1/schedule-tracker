@@ -1322,6 +1322,24 @@ body {
   background: rgba(124,111,247,0.25);
 }
 
+.room-invite-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  color: var(--text-2);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.room-invite-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-1);
+}
+
 /* ── Members row ────────────────────────────────────────── */
 .room-members-row {
   display: flex;
