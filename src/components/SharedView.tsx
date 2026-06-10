@@ -174,12 +174,12 @@ function RoomEntry({ savedCode, initialCode, defaultNickname, onEnter, onLogout 
             <form onSubmit={handleCreate} style={{ width: '100%' }}>
               <div className="form-group">
                 <label className="form-label">내 닉네임</label>
-                <input className="form-input" placeholder="예: Eddy" value={nickname}
+                <input className="form-input" placeholder="" value={nickname}
                   onChange={e => setNickname(e.target.value)} autoFocus/>
               </div>
               <div className="form-group">
                 <label className="form-label">방 이름</label>
-                <input className="form-input" placeholder="예: Eddy & 지수" value={roomName}
+                <input className="form-input" placeholder="" value={roomName}
                   onChange={e => setRoomName(e.target.value)}/>
               </div>
               {error && <div className="room-error">{error}</div>}
@@ -203,7 +203,7 @@ function RoomEntry({ savedCode, initialCode, defaultNickname, onEnter, onLogout 
             <form onSubmit={handleJoin} style={{ width: '100%' }}>
               <div className="form-group">
                 <label className="form-label">내 닉네임</label>
-                <input className="form-input" placeholder="예: 지수" value={nickname}
+                <input className="form-input" placeholder="" value={nickname}
                   onChange={e => setNickname(e.target.value)} autoFocus/>
               </div>
               <div className="form-group">
