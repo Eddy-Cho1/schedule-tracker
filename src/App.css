@@ -74,6 +74,112 @@
   }
 }
 
+/* ── 라이트모드 UI 강화 ──────────────────────────────────── */
+@media (prefers-color-scheme: light) {
+  /* 카드: 그림자 강화 */
+  .card {
+    background: #ffffff;
+    border-color: rgba(0,0,0,0.09);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 6px 20px rgba(0,0,0,0.07);
+  }
+
+  /* 태스크 아이템 */
+  .task-item {
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.09);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  }
+  .task-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  /* 달성률 링 카드 */
+  .ring-card {
+    background: #ffffff;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.09);
+  }
+
+  /* 링 트랙 (배경 원) */
+  .ring-track { stroke: rgba(0,0,0,0.08) !important; }
+
+  /* 통계 미니 카드 */
+  .stat-mini {
+    background: #ffffff;
+    border-color: rgba(0,0,0,0.09);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  }
+
+  /* 차트 섹션 */
+  .chart-section {
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.09);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+
+  /* 툴팁 */
+  .custom-tooltip {
+    background: #ffffff;
+    border-color: rgba(0,0,0,0.12);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  }
+  .custom-tooltip .label { color: #6b7280; }
+  .custom-tooltip .value { color: #111827; }
+
+  /* Recharts 그리드선 */
+  .recharts-cartesian-grid-horizontal line,
+  .recharts-cartesian-grid-vertical line {
+    stroke: rgba(0,0,0,0.07) !important;
+  }
+
+  /* 공동 일정 비교 테이블 */
+  .comparison-table {
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.09);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .comp-row {
+    border-bottom-color: rgba(0,0,0,0.07);
+  }
+  .comp-header {
+    background: rgba(0,0,0,0.03);
+  }
+
+  /* 사이드바 */
+  .sidebar {
+    background: #f0f0f5;
+    border-right-color: rgba(0,0,0,0.09);
+    box-shadow: 1px 0 8px rgba(0,0,0,0.06);
+  }
+
+  /* 상단바 */
+  .topbar {
+    background: #ffffff;
+    border-bottom-color: rgba(0,0,0,0.09);
+    box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  }
+
+  /* 멤버 달성률 칩 */
+  .room-member-chip {
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.1);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  /* 친구 목록 */
+  .friend-row {
+    background: #ffffff;
+    border-color: rgba(0,0,0,0.09);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .friends-header {
+    background: #ffffff;
+    border-color: rgba(0,0,0,0.09);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body, #root {
