@@ -56,7 +56,7 @@ export default function AddTaskModal({ open, date, onClose, onAdd }: Props) {
                   className="form-input"
                   value={title}
                   onChange={e => setTitle(e.target.value)}
-                  placeholder="예: 아침 운동 30분"
+                  placeholder=""
                   autoComplete="off"
                 />
               </div>

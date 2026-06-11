@@ -627,14 +627,12 @@ export default function SharedView({ initialCode }: { initialCode?: string | nul
 
   if (!user) return <GoogleLoginPrompt />
 
-  const googleName = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? ''
-
   if (!roomCode || !nickname) {
     return (
       <RoomEntry
         savedCode={savedCode}
         initialCode={initialCode ?? null}
-        defaultNickname={googleName}
+        defaultNickname=""
         onEnter={handleEnter}
         onLogout={async () => { await signOut(); setUser(null) }}
       />
