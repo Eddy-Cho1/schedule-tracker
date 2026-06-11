@@ -41,11 +41,21 @@ const SharedIcon = () => (
   </svg>
 )
 
+const FriendsIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+    <circle cx="9" cy="7" r="4"/>
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  </svg>
+)
+
 const navItems: { id: View; icon: React.ReactNode; label: string }[] = [
   { id: 'today',   icon: <CalendarIcon />, label: '오늘' },
   { id: 'weekly',  icon: <GridIcon />,     label: '주간' },
   { id: 'monthly', icon: <TrendIcon />,    label: '월간' },
   { id: 'shared',  icon: <SharedIcon />,   label: '공동' },
+  { id: 'friends', icon: <FriendsIcon />,  label: '친구' },
 ]
 
 export default function Sidebar({ view, onView }: Props) {

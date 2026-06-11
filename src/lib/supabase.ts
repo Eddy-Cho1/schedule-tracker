@@ -87,3 +87,69 @@ export async function signInWithGoogle() {
 export async function signOut() {
   return supabase.auth.signOut()
 }
+
+// ── Profiles ────────────────────────────────────────────────
+export type Profile = { id: string; display_name: string; avatar_url: string | null }
+
+export async function upsertProfile(user: User) {
+  const display_name = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? '익명'
+  const avatar_url = user.user_metadata?.avatar_url ?? null
+  await supabase.from('profiles').upsert({ id: user.id, display_name, avatar_url }, { onConflict: 'id' })
+}
+
+export async function getProfile(userId: string): Promise<Profile | null> {
+  const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
+  return data
+}
+
+// ── Friends ─────────────────────────────────────────────────
+export type FriendRequest = { id: string; requester_id: string; token: string; status: string; addressee_id: string | null }
+export type Friendship = { id: string; user_id_1: string; user_id_2: string }
+
+function randomToken(): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(6)))
+    .map(b => 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'[b % 58])
+    .join('')
+}
+
+export async function createFriendRequestToken(requesterId: string): Promise<string> {
+  const token = randomToken()
+  await supabase.from('friend_requests').insert({ requester_id: requesterId, token })
+  return token
+}
+
+export async function getFriendRequest(token: string): Promise<FriendRequest | null> {
+  const { data } = await supabase.from('friend_requests').select('*').eq('token', token).eq('status', 'pending').maybeSingle()
+  return data
+}
+
+export async function acceptFriendRequest(token: string, addresseeId: string): Promise<boolean> {
+  const req = await getFriendRequest(token)
+  if (!req || req.requester_id === addresseeId) return false
+
+  const { error: ue } = await supabase.from('friend_requests')
+    .update({ status: 'accepted', addressee_id: addresseeId })
+    .eq('token', token)
+  if (ue) return false
+
+  const [a, b] = [req.requester_id, addresseeId].sort()
+  const { error: fe } = await supabase.from('friendships')
+    .upsert({ user_id_1: a, user_id_2: b }, { onConflict: 'user_id_1,user_id_2' })
+  return !fe
+}
+
+export async function getFriends(userId: string): Promise<Profile[]> {
+  const { data } = await supabase.from('friendships')
+    .select('user_id_1, user_id_2')
+    .or(`user_id_1.eq.${userId},user_id_2.eq.${userId}`)
+  if (!data) return []
+  const friendIds = data.map(f => f.user_id_1 === userId ? f.user_id_2 : f.user_id_1)
+  if (friendIds.length === 0) return []
+  const { data: profiles } = await supabase.from('profiles').select('*').in('id', friendIds)
+  return profiles ?? []
+}
+
+export async function removeFriend(userId: string, friendId: string): Promise<void> {
+  const [a, b] = [userId, friendId].sort()
+  await supabase.from('friendships').delete().eq('user_id_1', a).eq('user_id_2', b)
+}

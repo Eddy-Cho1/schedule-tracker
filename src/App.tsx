@@ -9,6 +9,7 @@ import TodayView from './components/TodayView'
 import WeeklyView from './components/WeeklyView'
 import MonthlyView from './components/MonthlyView'
 import SharedView from './components/SharedView'
+import FriendsView from './components/FriendsView'
 import NotificationBell from './components/NotificationBell'
 import { syncSchedule, isPushEnabled } from './lib/push'
 
@@ -30,6 +31,7 @@ const VIEW_LABELS: Record<View, string> = {
   weekly:  '주간',
   monthly: '월간',
   shared:  '공동 일정',
+  friends: '친구',
 }
 
 export default function App() {
@@ -38,16 +40,23 @@ export default function App() {
   const [weekOffset, setWeekOffset] = useState(0)
   const [monthDate, setMonthDate] = useState(new Date())
 
-  // 초대 링크 (?join=ROOMCODE) 처리 — 마운트 시 1회만 읽고 URL 정리
+  // URL 파라미터 처리 — 마운트 시 1회만 읽고 URL 정리
   const [inviteCode] = useState<string | null>(() => {
     const params = new URLSearchParams(window.location.search)
     const code = params.get('join')?.toUpperCase() ?? null
     if (code) window.history.replaceState({}, '', '/')
     return code
   })
+  const [friendToken] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('friend') ?? null
+    if (token) window.history.replaceState({}, '', '/')
+    return token
+  })
 
   useEffect(() => { load() }, [])
   useEffect(() => { if (inviteCode) setView('shared') }, [inviteCode])
+  useEffect(() => { if (friendToken) setView('friends') }, [friendToken])
 
   // 오늘 일정 변경 시 서버에 sync (푸시 알림용)
   useEffect(() => {
@@ -157,6 +166,7 @@ export default function App() {
               />
             )}
             {view === 'shared' && <SharedView initialCode={inviteCode} />}
+            {view === 'friends' && <FriendsView friendToken={friendToken} />}
           </motion.div>
         </AnimatePresence>
       </div>

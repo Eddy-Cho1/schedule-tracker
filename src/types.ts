@@ -17,7 +17,7 @@ export interface ScheduleData {
   entries: Record<string, DayEntry>
 }
 
-export type View = 'today' | 'weekly' | 'monthly' | 'shared'
+export type View = 'today' | 'weekly' | 'monthly' | 'shared' | 'friends'
 
 export const CATEGORY_META: Record<TaskCategory, { label: string; color: string; bg: string }> = {
   work:     { label: '업무',   color: '#818cf8', bg: 'rgba(129,140,248,0.15)' },

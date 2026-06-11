@@ -1622,3 +1622,146 @@ body {
   color: var(--accent-light);
   flex-shrink: 0;
 }
+
+/* ── Friends ─────────────────────────────────────────────── */
+.friends-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 8px 0;
+}
+
+.friends-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.friends-me {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.friends-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.friends-avatar.sm {
+  width: 32px;
+  height: 32px;
+}
+
+.friends-avatar-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.friends-avatar-placeholder.sm {
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+}
+
+.friends-me-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.friends-me-email {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+.friends-invite-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(124,111,247,0.3);
+  border-radius: var(--radius-full);
+  color: var(--accent-light);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.friends-invite-btn:hover {
+  background: rgba(124,111,247,0.25);
+}
+
+.friends-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.friends-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.friend-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: background 0.15s ease;
+}
+
+.friend-row:hover {
+  background: var(--bg-card-hover);
+}
+
+.friend-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-1);
+}
+
+.friend-remove-btn {
+  padding: 4px 10px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-3);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.friend-remove-btn:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
